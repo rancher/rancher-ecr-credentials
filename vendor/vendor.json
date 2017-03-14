@@ -3,6 +3,12 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "NRonvQTe073YVead6//CQ5oVgK4=",
+			"path": "github.com/Sirupsen/logrus",
+			"revision": "1deb2db2a6fff8a35532079061b903c3a25eed52",
+			"revisionTime": "2017-03-08T20:36:35Z"
+		},
+		{
 			"checksumSHA1": "BbbMbpao2p7TGrAxHJvdZJ68xIU=",
 			"path": "github.com/aws/aws-sdk-go/aws",
 			"revision": "36670f6ab1769ad77fa5f7e2c194398733503635",
@@ -218,5 +224,5 @@
 			"revisionTime": "2016-02-21T10:44:43Z"
 		}
 	],
-	"rootPath": "github.com/objectpartners/rancher-ecr-credentials"
+	"rootPath": "github.com/rancher/rancher-ecr-credentials"
 }
