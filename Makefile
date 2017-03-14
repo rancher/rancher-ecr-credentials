@@ -6,3 +6,6 @@ test:
 
 clean:
 	rm rancher-ecr-credentials
+
+push:
+        docker build . -t rancher/rancher-ecr-credentials

@@ -40,7 +40,7 @@ func main() {
 		log.SetLevel(log_level_obj)
 	}
 	// set log format to JSON
-	log.SetFormatter(&log.JSONFormatter{})
+	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
 
 	contextLogger := log.WithFields(log.Fields{
 		"func": "main",
