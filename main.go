@@ -29,8 +29,7 @@ type Rancher struct {
 	client      *client.RancherClient
 }
 
-func main() {
-
+func initLogger() {
 	// check if config param has been set for log level, otherwise the default of the logrus package will be used
 	if log_level, ok := os.LookupEnv("LOG_LEVEL"); ok && log_level != "" {
 		log_level_obj, err := log.ParseLevel(log_level)
@@ -41,12 +40,11 @@ func main() {
 	}
 	// set log format to JSON
 	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
+}
 
-	contextLogger := log.WithFields(log.Fields{
-		"func": "main",
-	})
-
-	contextLogger.Info("Starting ECR Credential Updater")
+func main() {
+	initLogger()
+	log.Info("Starting ECR Credential Updater")
 	r := Rancher{
 		URL:         os.Getenv("CATTLE_URL"),
 		AccessKey:   os.Getenv("CATTLE_ACCESS_KEY"),
@@ -56,7 +54,7 @@ func main() {
 	if val, ok := os.LookupEnv("AUTO_CREATE"); ok {
 		b, err := strconv.ParseBool(val)
 		if err != nil {
-			contextLogger.Fatalf("Unable to parse boolean value from AUTO_CREATE: %s\n", err)
+			log.Fatalf("Unable to parse boolean value from AUTO_CREATE: %s\n", err)
 		}
 		r.AutoCreate = b
 	}
@@ -66,13 +64,13 @@ func main() {
 		SecretKey: r.SecretKey,
 	})
 	if err != nil {
-		contextLogger.Fatalf("Unable to create Rancher API client: %s\n", err)
+		log.Fatalf("Unable to create Rancher API client: %s\n", err)
 	}
 	r.client = rancher
-	contextLogger.Debug("Created Rancher API Client")
+	log.Debug("Created Rancher API Client")
 
 	if ids, ok := os.LookupEnv("AWS_ECR_REGISTRY_IDS"); ok && ids != "" {
-		contextLogger.Debug("Detected AWS_ECR_REGISTRY_IDS config param")
+		log.Debug("Detected AWS_ECR_REGISTRY_IDS config param")
 		r.RegistryIds = strings.Split(ids, ",")
 	}
 
@@ -81,7 +79,7 @@ func main() {
 	r.updateEcr(awsClient(), r.client.Registry, r.client.RegistryCredential)
 	ticker := time.NewTicker(6 * time.Hour)
 	for {
-		contextLogger.Debug("Sleeping until next poll cycle")
+		log.Debug("Sleeping until next poll cycle")
 		<-ticker.C
 		r.updateEcr(awsClient(), r.client.Registry, r.client.RegistryCredential)
 	}
@@ -92,25 +90,22 @@ func (r *Rancher) updateEcr(
 	registryClient client.RegistryOperations,
 	registryCredentialClient client.RegistryCredentialOperations) {
 
-	contextLogger := log.WithFields(log.Fields{
-		"func": "updateEcr",
-	})
-	contextLogger.Println("Updating ECR Credentials")
+	log.Println("Updating ECR Credentials")
 
 	request := &ecr.GetAuthorizationTokenInput{}
 	if len(r.RegistryIds) > 0 {
 		request = &ecr.GetAuthorizationTokenInput{RegistryIds: aws.StringSlice(r.RegistryIds)}
 	}
 	resp, err := svc.GetAuthorizationToken(request)
-	contextLogger.Debug(resp)
+	log.Debug(resp)
 	if err != nil {
-		contextLogger.Printf("Error calling AWS API: %s\n", err)
+		log.Printf("Error calling AWS API: %s\n", err)
 		return
 	}
-	contextLogger.Println("Returned from AWS GetAuthorizationToken call successfully")
+	log.Println("Returned from AWS GetAuthorizationToken call successfully")
 
 	if len(resp.AuthorizationData) < 1 {
-		contextLogger.Println("Request did not return authorization data")
+		log.Println("Request did not return authorization data")
 		return
 	}
 
@@ -124,26 +119,23 @@ func (r *Rancher) processToken(
 	registryClient client.RegistryOperations,
 	registryCredentialClient client.RegistryCredentialOperations) {
 
-	contextLogger := log.WithFields(log.Fields{
-		"func": "processToken",
-	})
 
 	bytes, err := base64.StdEncoding.DecodeString(*data.AuthorizationToken)
 	if err != nil {
-		contextLogger.Printf("[%s] Error decoding authorization token: %s\n", *data.ProxyEndpoint, err)
+		log.Printf("[%s] Error decoding authorization token: %s\n", *data.ProxyEndpoint, err)
 		return
 	}
 	token := string(bytes[:len(bytes)])
 
 	authTokens := strings.Split(token, ":")
 	if len(authTokens) != 2 {
-		contextLogger.Printf("[%s] Authorization token does not contain data in <user>:<password> format: %s\n", *data.ProxyEndpoint, token)
+		log.Printf("[%s] Authorization token does not contain data in <user>:<password> format: %s\n", *data.ProxyEndpoint, token)
 		return
 	}
 
 	registryURL, err := url.Parse(*data.ProxyEndpoint)
 	if err != nil {
-		contextLogger.Printf("[%s] Error parsing registry URL: %s\n", *data.ProxyEndpoint, err)
+		log.Printf("[%s] Error parsing registry URL: %s\n", *data.ProxyEndpoint, err)
 		return
 	}
 
@@ -153,14 +145,14 @@ func (r *Rancher) processToken(
 
 	registries, err := registryClient.List(&client.ListOpts{})
 	if err != nil {
-		contextLogger.Printf("[%s] Failed to retrieve registries: %s\n", *data.ProxyEndpoint, err)
+		log.Printf("[%s] Failed to retrieve registries: %s\n", *data.ProxyEndpoint, err)
 		return
 	}
-	contextLogger.Printf("[%s] Looking for configured registry for host: %s\n", *data.ProxyEndpoint, ecrHost)
+	log.Printf("[%s] Looking for configured registry for host: %s\n", *data.ProxyEndpoint, ecrHost)
 	for _, registry := range registries.Data {
 		serverAddress, err := url.Parse(registry.ServerAddress)
 		if err != nil {
-			contextLogger.Printf("[%s] Failed to parse configured registry URL: %s\n", *data.ProxyEndpoint, registry.ServerAddress)
+			log.Printf("[%s] Failed to parse configured registry URL: %s\n", *data.ProxyEndpoint, registry.ServerAddress)
 			break
 		}
 		registryHost := serverAddress.Host
@@ -174,11 +166,11 @@ func (r *Rancher) processToken(
 				},
 			})
 			if err != nil {
-				contextLogger.Printf("[%s] Failed to retrieved registry credentials for id: %s, %s\n", *data.ProxyEndpoint, registry.Id, err)
+				log.Printf("[%s] Failed to retrieved registry credentials for id: %s, %s\n", *data.ProxyEndpoint, registry.Id, err)
 				break
 			}
 			if len(credentials.Data) != 1 {
-				contextLogger.Printf("[%s] No credentials retrieved for registry: %s\n", *data.ProxyEndpoint, registry.Id)
+				log.Printf("[%s] No credentials retrieved for registry: %s\n", *data.ProxyEndpoint, registry.Id)
 				break
 			}
 			credential := credentials.Data[0]
@@ -188,23 +180,23 @@ func (r *Rancher) processToken(
 				Email: "not-really@required.anymore",
 			})
 			if err != nil {
-				contextLogger.Printf("[%s] Failed to update registry credential %s, %s\n", *data.ProxyEndpoint, credential.Id, err)
+				log.Printf("[%s] Failed to update registry credential %s, %s\n", *data.ProxyEndpoint, credential.Id, err)
 			} else {
-				contextLogger.Printf("[%s] Successfully updated credentials %s for registry %s; registry address: %s\n", *data.ProxyEndpoint, credential.Id, registry.Id, registryHost)
+				log.Printf("[%s] Successfully updated credentials %s for registry %s; registry address: %s\n", *data.ProxyEndpoint, credential.Id, registry.Id, registryHost)
 			}
 			return
 		}
 	}
-	contextLogger.Printf("[%s] Did not find an existing reigstry for host: %s\n", *data.ProxyEndpoint, ecrHost)
+	log.Printf("[%s] Did not find an existing reigstry for host: %s\n", *data.ProxyEndpoint, ecrHost)
 
 	// If we made it this far, it means we were not able to find an existing registry to update in Rancher
 	if r.AutoCreate {
-		contextLogger.Printf("[%s] Automatically creating registry for host: %s\n", *data.ProxyEndpoint, ecrHost)
+		log.Printf("[%s] Automatically creating registry for host: %s\n", *data.ProxyEndpoint, ecrHost)
 		registry, err := registryClient.Create(&client.Registry{
 			ServerAddress: ecrHost,
 		})
 		if err != nil {
-			contextLogger.Printf("[%s] Error creating registry for host: %s, %s\n", *data.ProxyEndpoint, ecrHost, err)
+			log.Printf("[%s] Error creating registry for host: %s, %s\n", *data.ProxyEndpoint, ecrHost, err)
 			return
 		}
 		_, err = registryCredentialClient.Create(&client.RegistryCredential{
@@ -213,32 +205,30 @@ func (r *Rancher) processToken(
 			SecretValue: ecrPassword,
 			Email: "not-really@required.anymore",
 		})
-		contextLogger.Printf("[%s] Successfully created regristy %s and updated credential\n", *data.ProxyEndpoint, registry.Id)
+		log.Printf("[%s] Successfully created regristy %s and updated credential\n", *data.ProxyEndpoint, registry.Id)
 
 		if err != nil {
-			contextLogger.Printf("[%s] Error creating registry credential for host: %s, %s\n", *data.ProxyEndpoint, ecrHost, err)
+			log.Printf("[%s] Error creating registry credential for host: %s, %s\n", *data.ProxyEndpoint, ecrHost, err)
 			return
 		}
 	} else {
-		contextLogger.Printf("[%s] Failed to find Rancher registry to update for ECR Host: %s\n", *data.ProxyEndpoint, ecrHost)
+		log.Printf("[%s] Failed to find Rancher registry to update for ECR Host: %s\n", *data.ProxyEndpoint, ecrHost)
 	}
 	return
 }
 
 func healthcheck() {
-	contextLogger := log.WithFields(log.Fields{
-		"func": "healthcheck",
-	})
+
 	listenPort := "8080"
 	p, ok := os.LookupEnv("LISTEN_PORT")
 	if ok {
 		listenPort = p
 	}
 	http.HandleFunc("/ping", ping)
-	contextLogger.Printf("Starting Healthcheck listener at :%s/ping\n", listenPort)
+	log.Printf("Starting Healthcheck listener at :%s/ping\n", listenPort)
 	err := http.ListenAndServe(fmt.Sprintf(":%s", listenPort), nil)
 	if err != nil {
-		contextLogger.Fatal("Error creating health check listener: ", err)
+		log.Fatal("Error creating health check listener: ", err)
 	}
 }
 
@@ -248,12 +238,9 @@ func ping(w http.ResponseWriter, r *http.Request) {
 }
 
 func awsClient() *ecr.ECR {
-	contextLogger := log.WithFields(log.Fields{
-		"func": "awsClient",
-	})
 	roleArn, ok := os.LookupEnv("AWS_ROLE_ARN")
 	if ok {
-		contextLogger.Printf("[awsClient] Assuming Role: %s\n", roleArn)
+		log.Printf("[awsClient] Assuming Role: %s\n", roleArn)
 		return ecr.New(
 			session.New(
 				aws.NewConfig().WithCredentials(
