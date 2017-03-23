@@ -31,12 +31,12 @@ type Rancher struct {
 
 func initLogger() {
 	// check if config param has been set for log level, otherwise the default of the logrus package will be used
-	if log_level, ok := os.LookupEnv("LOG_LEVEL"); ok && log_level != "" {
-		log_level_obj, err := log.ParseLevel(log_level)
+	if logLevel, ok := os.LookupEnv("LOG_LEVEL"); ok && logLevel != "" {
+		logLevelObj, err := log.ParseLevel(logLevel)
 		if err != nil {
 			log.Error(err)
 		}
-		log.SetLevel(log_level_obj)
+		log.SetLevel(logLevelObj)
 	}
 	// set log format to JSON
 	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
@@ -248,7 +248,6 @@ func awsClient() *ecr.ECR {
 				),
 			),
 		)
-	} else {
-		return ecr.New(session.New())
 	}
+	return ecr.New(session.New())
 }

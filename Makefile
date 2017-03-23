@@ -1,11 +1,23 @@
-build:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 govendor build -a -installsuffix cgo
+TARGETS := $(shell ls scripts)
 
-test:
-	govendor test -v +local
+.dapper:
+	@echo Downloading dapper
+	@curl -sL https://releases.rancher.com/dapper/latest/dapper-`uname -s`-`uname -m` > .dapper.tmp
+	@@chmod +x .dapper.tmp
+	@./.dapper.tmp -v
+	@mv .dapper.tmp .dapper
 
-clean:
-	rm rancher-ecr-credentials
+$(TARGETS): .dapper
+	./.dapper $@
 
-push:
-	docker build . -t rancher/rancher-ecr-credentials
+trash: .dapper
+	./.dapper -m bind trash
+
+trash-keep: .dapper
+	./.dapper -m bind trash -k
+
+deps: trash
+
+.DEFAULT_GOAL := ci
+
+.PHONY: $(TARGETS)
