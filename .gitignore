@@ -24,4 +24,7 @@ _testmain.go
 *.prof
 rancher-ecr-credentials
 
+.trash-cache
+.dapper
+
 .idea/*
