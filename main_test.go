@@ -6,8 +6,8 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ecr"
-	"github.com/rancher/rancher-ecr-credentials/mocks"
 	"github.com/rancher/go-rancher/client"
+	"github.com/rancher/rancher-ecr-credentials/mocks"
 )
 
 func TestMain_basic(t *testing.T) {
@@ -53,7 +53,7 @@ func TestMain_basic(t *testing.T) {
 	mockRegistryCredential.On("Update", &credential, &client.RegistryCredential{
 		PublicValue: "mockUser",
 		SecretValue: "mockPassword",
-		Email: "not-really@required.anymore",
+		Email:       "not-really@required.anymore",
 	}).Return(&client.RegistryCredential{}, nil)
 
 	r.updateEcr(mockEcr, mockRegistry, mockRegistryCredential)
@@ -102,15 +102,13 @@ func TestMain_autoCreate(t *testing.T) {
 		RegistryId:  "1r1",
 		PublicValue: "mockUser",
 		SecretValue: "mockPassword",
-		Email: "not-really@required.anymore",
-
+		Email:       "not-really@required.anymore",
 	}).Return(&client.RegistryCredential{
 		Resource:    client.Resource{Id: "1rc1"},
 		RegistryId:  "1r1",
 		PublicValue: "mockUser",
 		SecretValue: "mockPassword",
-		Email: "not-really@required.anymore",
-
+		Email:       "not-really@required.anymore",
 	}, nil)
 
 	r.updateEcr(mockEcr, mockRegistry, mockRegistryCredential)

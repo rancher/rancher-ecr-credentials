@@ -119,7 +119,6 @@ func (r *Rancher) processToken(
 	registryClient client.RegistryOperations,
 	registryCredentialClient client.RegistryCredentialOperations) {
 
-
 	bytes, err := base64.StdEncoding.DecodeString(*data.AuthorizationToken)
 	if err != nil {
 		log.Printf("[%s] Error decoding authorization token: %s\n", *data.ProxyEndpoint, err)
@@ -177,7 +176,7 @@ func (r *Rancher) processToken(
 			_, err = registryCredentialClient.Update(&credential, &client.RegistryCredential{
 				PublicValue: ecrUsername,
 				SecretValue: ecrPassword,
-				Email: "not-really@required.anymore",
+				Email:       "not-really@required.anymore",
 			})
 			if err != nil {
 				log.Printf("[%s] Failed to update registry credential %s, %s\n", *data.ProxyEndpoint, credential.Id, err)
@@ -203,7 +202,7 @@ func (r *Rancher) processToken(
 			RegistryId:  registry.Id,
 			PublicValue: ecrUsername,
 			SecretValue: ecrPassword,
-			Email: "not-really@required.anymore",
+			Email:       "not-really@required.anymore",
 		})
 		log.Printf("[%s] Successfully created regristy %s and updated credential\n", *data.ProxyEndpoint, registry.Id)
 
