@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecr"
 	"github.com/aws/aws-sdk-go/service/ecr/ecriface"
 	"github.com/rancher/go-rancher/client"
+	"gopkg.in/matryer/try.v1"
 )
 
 // Rancher holds the configuration parameters
@@ -96,22 +97,40 @@ func (r *Rancher) updateEcr(
 	if len(r.RegistryIds) > 0 {
 		request = &ecr.GetAuthorizationTokenInput{RegistryIds: aws.StringSlice(r.RegistryIds)}
 	}
-	resp, err := svc.GetAuthorizationToken(request)
-	log.Debug(resp)
+	err := try.Do(func(attempt int) (bool, error) {
+		var err error
+		var maxRetries = 10
+		var retryDuration = time.Duration(attempt) * time.Second * 100
+
+		log.Println("Attempting to call AWS API for ECR Authorization Token")
+		resp, err := svc.GetAuthorizationToken(request)
+		log.Debug(resp)
+		if err != nil {
+			log.Errorf("Error calling AWS API: %s\n", err)
+			log.Printf("Sleeping before retry for %s ", retryDuration)
+			time.Sleep(retryDuration)
+			return attempt < maxRetries, err
+		}
+		log.Println("Returned from AWS GetAuthorizationToken call successfully")
+
+		if len(resp.AuthorizationData) < 1 {
+			log.Errorln("Request did not return authorization data")
+			log.Printf("Sleeping before retry for %s ", retryDuration)
+			time.Sleep(retryDuration)
+			return attempt < maxRetries, err
+		}
+
+		for _, data := range resp.AuthorizationData {
+			r.processToken(data, registryClient, registryCredentialClient)
+		}
+		log.Printf("Sleeping before retry for %s ", retryDuration)
+		time.Sleep(retryDuration)
+		return attempt < maxRetries, err
+	})
 	if err != nil {
-		log.Printf("Error calling AWS API: %s\n", err)
-		return
-	}
-	log.Println("Returned from AWS GetAuthorizationToken call successfully")
-
-	if len(resp.AuthorizationData) < 1 {
-		log.Println("Request did not return authorization data")
-		return
+		log.Errorln("Max retries for AWS API reached. Last error:", err)
 	}
 
-	for _, data := range resp.AuthorizationData {
-		r.processToken(data, registryClient, registryCredentialClient)
-	}
 }
 
 func (r *Rancher) processToken(
