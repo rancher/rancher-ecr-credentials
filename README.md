@@ -27,7 +27,7 @@ AWS credentials are loaded using the default [AWS credential chain](http://docs.
 Credentials are loaded in the following order:
 
 1. Assumed IAM Role specified in `AWS_ROLE_ARN` (The credentials used to execute the assume are determined using the following rules)
-1. Environment variables (Specify `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` *(optional)*)
+1. Environment variables (Specify `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, and `AWS_SESSION_TOKEN` *(optional)*)
 1. Shared credentials file (mount a volume to `/root/.aws` that contains `credentials` and `config` files and specify `AWS_PROFILE`)
 1. IAM Instance Profile (if running on EC2)
 
