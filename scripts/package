@@ -13,6 +13,8 @@ TAG=${TAG:-${VERSION}${SUFFIX}}
 REPO=${REPO:-rancher}
 
 cp ../bin/rancher-ecr-credentials .
-docker build -t ${REPO}/rancher-ecr-credentials:${TAG} .
 
-echo Built ${REPO}/rancher-ecr-credentials:${TAG}
+IMAGE=${REPO}/rancher-ecr-credentials:${TAG}
+docker build -t ${IMAGE} .
+echo ${IMAGE} > ../dist/images
+echo Built ${IMAGE}
