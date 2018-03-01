@@ -28,3 +28,4 @@ rancher-ecr-credentials
 .dapper
 
 .idea/*
+dist
