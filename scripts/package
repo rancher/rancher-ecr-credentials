@@ -5,6 +5,7 @@ source $(dirname $0)/version
 
 ARCH=${ARCH:?"ARCH not set"}
 SUFFIX=""
+SCRIPTPATH="$(cd "$(dirname "$0")"; pwd -P)"
 [ "${ARCH}" != "amd64" ] && SUFFIX="_${ARCH}"
 
 cd $(dirname $0)/../package
@@ -16,5 +17,47 @@ cp ../bin/rancher-ecr-credentials .
 
 IMAGE=${REPO}/rancher-ecr-credentials:${TAG}
 docker build -t ${IMAGE} .
+mkdir -p dist && rm -rf dist/*
 echo ${IMAGE} > ../dist/images
 echo Built ${IMAGE}
+
+package() {
+  local os arch suffix tag repo env image_name binary_name
+  os=$1
+  arch=$2
+  image_name="rancher-ecr-credentials"
+  binary_name="rancher-ecr-credentials"
+  if [ "$WINDOWS_DOCKER_HOST" == "" -a "$os" == "windows" ]; then
+      echo "WINDOWS_DOCKER_HOST is not set, skip packaging Windows image"
+      return
+  fi
+  [ "$os"   == "windows" ] && binary_name="${binary_name}.exe"
+  [ "$os"   != "linux" ] && image_name="${image_name}-${os}"
+  [ "$arch" != "amd64" ] && suffix="${suffix}_${arch}"
+  
+  tag="${TAG:-${VERSION}${SUFFIX}}"
+
+  if [ ! -d "package/$os/$arch" ]; then 
+      echo "Directory package/$os/$arch not exist, skip package"
+      return
+  fi
+  cp bin/$os/$arch/$binary_name package/$os/$arch
+
+  # because if building windows image, need to connect to docker on windows. set DOCKER_HOST for docker build context
+  [ "$os" == "windows" ] && dhost="tcp://$WINDOWS_DOCKER_HOST:2375" || dhost="$DOCKER_HOST"
+  DOCKER_HOST=$dhost docker build -t ${REPO}/${image_name}:${tag} -f package/$os/$arch/Dockerfile package/$os/$arch
+
+  echo ${REPO}/${image_name}:${tag} >> dist/images
+  echo Built ${REPO}/${image_name}:${tag}
+}
+
+source $SCRIPTPATH/version
+cd $SCRIPTPATH/..
+
+if [ -n "$CROSS" ]; then
+    for os in $(ls bin); do
+        for arch in $(ls bin/$os); do
+            package $os $arch
+        done
+    done
+fi
